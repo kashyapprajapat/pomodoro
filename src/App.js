@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 const PomodoroTimer = () => {
@@ -8,6 +8,17 @@ const PomodoroTimer = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [selectedFruit, setSelectedFruit] = useState("");
 
+  // Request Notification Permission when component loads
+  useEffect(() => {
+    if ("Notification" in window) {
+      Notification.requestPermission().then((permission) => {
+        if (permission === "granted") {
+          console.log("Notification permission granted");
+        }
+      });
+    }
+  }, []);
+
   useEffect(() => {
     let timer;
     if (isRunning && secondsLeft > 0) {
@@ -15,37 +26,50 @@ const PomodoroTimer = () => {
         setSecondsLeft((prev) => prev - 1);
       }, 1000);
     } else if (secondsLeft === 0 && isRunning) {
-      toast.success(
-        `Time's up! Your ${selectedFruit} Pomodoro session is over! 🍏🥭`,
-        { position: "top-center" }
-      );
-      sendPushNotification(`Time's up! Your ${selectedFruit} session is over!`);
+      showNotification(`⏳ Time's up! Your ${selectedFruit} session is over! 🍏🥭`);
+      toast.success(`⏳ Time's up! Your ${selectedFruit} session is over! 🍏🥭`, {
+        position: "top-center",
+        autoClose: 3000,
+      });
       setIsRunning(false);
     }
+
     return () => clearInterval(timer);
   }, [isRunning, secondsLeft, selectedFruit]);
 
   const startTimer = () => {
     if (time > 0 && selectedFruit) {
-      setSecondsLeft(time * 60);
+      if (!isRunning && secondsLeft === 0) {
+        setSecondsLeft(time * 60);
+      }
       setIsRunning(true);
+      showNotification(`🎯 Focus mode started with ${selectedFruit}!`);
+      toast.info(`🎯 Focus mode started with ${selectedFruit}!`, {
+        position: "top-right",
+        autoClose: 2000,
+      });
     } else {
-      toast.error("Please select a fruit and enter a valid time! ⏳🍎", {
+      toast.error("⚠️ Please enter a valid time & select a fruit!", {
         position: "top-center",
       });
+      showNotification("⚠️ Please enter a valid time & select a fruit!");
     }
   };
 
-  const stopTimer = () => setIsRunning(false);
+  const stopTimer = () => {
+    setIsRunning(false);
+    showNotification("⏸ Timer paused!");
+    toast.warn("⏸ Timer paused!", {
+      position: "bottom-right",
+      autoClose: 1000,
+    });
+  };
 
-  const sendPushNotification = (message) => {
+  const showNotification = (message) => {
     if ("Notification" in window && Notification.permission === "granted") {
-      new Notification("Pomodoro Timer", { body: message });
-    } else if ("Notification" in window && Notification.permission !== "denied") {
-      Notification.requestPermission().then((permission) => {
-        if (permission === "granted") {
-          new Notification("Pomodoro Timer", { body: message });
-        }
+      new Notification("Pomodoro Timer", {
+        body: message,
+        icon: "https://cdn-icons-png.flaticon.com/512/616/616490.png",
       });
     }
   };
@@ -57,52 +81,47 @@ const PomodoroTimer = () => {
   };
 
   return (
-    <div
-      style={{
-        ...styles.container,
-        backgroundImage: `url(${fruitImages[selectedFruit] || ""})`,
-        backgroundColor: "#57d8ff",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
-    >
-      <h1>🍎 Pomodoro Timer 🍊</h1>
-      <div>
-        <label>⏳ Enter Time (minutes): </label>
-        <input
-          type="number"
-          value={time}
-          onChange={(e) => setTime(e.target.value)}
-          min="1"
-          style={styles.input}
-        />
-      </div>
-      <div>
-        <label>🍏 Select a Fruit: </label>
-        <select
-          value={selectedFruit}
-          onChange={(e) => setSelectedFruit(e.target.value)}
-          style={styles.select}
-        >
-          <option value="">-- Choose a Fruit --</option>
-          <option value="Apple">🍎 Apple (Classic 25 min)</option>
-          <option value="Mango">🥭 Mango (40 min Focus)</option>
-          <option value="Banana">🍌 Banana (50 min Deep Work)</option>
-        </select>
-      </div>
-      <div>
-        <h2>
-          ⏲ Time Left: {Math.floor(secondsLeft / 60)}:
-          {String(secondsLeft % 60).padStart(2, "0")}
-        </h2>
-      </div>
-      <div>
-        <button onClick={startTimer} style={styles.buttonStart}>
-          ▶ Start
-        </button>
-        <button onClick={stopTimer} style={styles.buttonStop}>
-          ⏹ Stop
-        </button>
+    <div style={{ ...styles.container, backgroundImage: `url(${fruitImages[selectedFruit] || ""})` }}>
+      <ToastContainer />
+      <div style={styles.overlay}>
+        <h1>🍎 Pomodoro Timer 🍊</h1>
+        <div>
+          <label>⏳ Enter Time (minutes): </label>
+          <input
+            type="number"
+            value={time}
+            onChange={(e) => setTime(Number(e.target.value))}
+            min="1"
+            style={styles.input}
+          />
+        </div>
+        <div>
+          <label>🍏 Select a Fruit: </label>
+          <select
+            value={selectedFruit}
+            onChange={(e) => setSelectedFruit(e.target.value)}
+            style={styles.select}
+          >
+            <option value="">-- Choose a Fruit --</option>
+            <option value="Apple">🍎 Apple (25 min Focus)</option>
+            <option value="Mango">🥭 Mango (40 min Deep Work)</option>
+            <option value="Banana">🍌 Banana (50 min Endurance)</option>
+          </select>
+        </div>
+        <div>
+          <h2>
+            ⏲ Time Left: {Math.floor(secondsLeft / 60)}:
+            {String(secondsLeft % 60).padStart(2, "0")}
+          </h2>
+        </div>
+        <div>
+          <button onClick={startTimer} style={styles.buttonStart}>
+            {isRunning ? "▶ Resume" : "▶ Start"}
+          </button>
+          <button onClick={stopTimer} style={styles.buttonStop}>
+            ⏹ Stop
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -111,26 +130,37 @@ const PomodoroTimer = () => {
 const styles = {
   container: {
     textAlign: "center",
-    fontFamily: "Arial",
+    fontFamily: "Arial, sans-serif",
     padding: "20px",
     height: "100vh",
     display: "flex",
-    flexDirection: "column",
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor:"#6be5fd",
+    backgroundSize: "contain",
+    backgroundRepeat: "no-repeat",
+    backgroundPosition: "center",
     transition: "background-image 0.5s ease-in-out",
+  },
+  overlay: {
+    backgroundColor: "rgba(255, 255, 255, 0.66)",
+    padding: "30px",
+    borderRadius: "10px",
+    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
   },
   input: {
     padding: "10px",
     margin: "10px",
     fontSize: "16px",
-    borderRadius: "5px",
+    width: "60px",
     border: "1px solid #ccc",
-    width: "200px",
+    borderRadius: "5px",
+    textAlign: "center",
   },
   select: {
     padding: "10px",
     fontSize: "16px",
+    border: "1px solid #ccc",
     borderRadius: "5px",
   },
   buttonStart: {
