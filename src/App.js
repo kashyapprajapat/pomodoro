@@ -8,7 +8,7 @@ const PomodoroTimer = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [selectedFruit, setSelectedFruit] = useState("");
 
-  // Request Notification Permission when component loads
+  
   useEffect(() => {
     if ("Notification" in window) {
       Notification.requestPermission().then((permission) => {
